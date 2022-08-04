@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+  namespace: devops
+data:
+  default.conf: |
+   server {
+      listen 80;
+      server_name test.lan;
+      location /api {
+       if ($request_method = 'OPTIONS') {
+          add_header 'Content-Type' 'text/plain; charset=utf-8';
+          add_header 'Content-Length' 0;
+          return 204;
+       }
+          add_header 'Access-Control-Allow-Origin' '*';
+          add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+       # add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+          add_header 'Access-Control-Allow-Headers' '*';
+        
+       # add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+          add_header 'Access-Control-Expose-Headers' '*';
+          proxy_pass http://java-back-service:8080;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "Upgrade";
+          proxy_set_header Host $http_host;
+
+       }
+     
+       location / {
+          proxy_pass http://react-front-service:4884;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "Upgrade";
+          proxy_set_header Host $http_host;
+
+       }
+
+    }
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+          # hostPort: 80
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          readOnly: true
+          name: nginx-conf
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: nginx-conf
+          items:
+          - key: default.conf
+            path: default.conf
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-front
+  namespace: devops
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  type: LoadBalancer
+  selector:
+    app: nginx

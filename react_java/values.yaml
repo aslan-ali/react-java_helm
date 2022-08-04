@@ -1,0 +1,15 @@
+container:
+  reactapp:      
+    image: netdevopsaslan/react-app
+    replicaCount: 1
+    port: '4884'
+    tag: '2.0.0'
+    type: ClusterIP
+    name: react-front
+  backapp:
+    image: netdevopsaslan/java_app
+    replicaCount: 1
+    port: '8080'
+    tag: "latest"
+    type: ClusterIP
+    name: java-back
